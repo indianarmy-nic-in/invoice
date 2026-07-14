@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Professional Invoice System</title>
+    
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #0056b3;
+            --bg-color: #f4f7f6;
+            --box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        /* 3 Second App Preloader */
+        #preloader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #ffffff; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 99999;
+        }
+        .preloader-img { width: 100px; animation: pulse 1.5s infinite; margin-bottom: 15px; }
+        @keyframes pulse { 0% { transform: scale(0.9); opacity: 0.8;} 50% { transform: scale(1.2); opacity: 1;} 100% { transform: scale(0.9); opacity: 0.8;} }
+        .preloader-text { font-size: 18px; font-weight: bold; color: var(--primary); letter-spacing: 1px; }
+
+        /* Glass Panel / Container */
+        .panel {
+            background: #fff; border-radius: 12px; padding: 25px; margin-bottom: 25px;
+            box-shadow: var(--box-shadow); max-width: 1000px; margin-left: auto; margin-right: auto;
+        }
+
+        h2, h3 { color: var(--primary); margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+
+        /* Form Header (Input Side) */
+        .form-header-info { text-align: center; margin-bottom: 30px; border-bottom: 2px dashed #ccc; padding-bottom: 20px; }
+        .form-header-info img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px; }
+        .form-header-info h1 { margin: 0; font-size: 24px; color: #222; font-weight: 900; text-transform: uppercase;}
+        .form-header-info p { margin: 5px 0; font-size: 15px; color: #555; }
+        .form-header-info .gst-text { font-weight: bold; color: #000; font-size: 16px; margin-top: 10px; background: #eee; display: inline-block; padding: 5px 15px; border-radius: 5px;}
+
+        /* 3 Box Layout Constraint */
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr) !important; gap: 15px; margin-bottom: 15px; }
+
+        .form-group { display: flex; flex-direction: column; position: relative; }
+        .form-group label { font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #555; }
+        .form-group input, .form-group select {
+            padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
+            transition: 0.3s; width: 100%; box-sizing: border-box;
+        }
+        .form-group input:focus, .form-group select:focus { border-color: var(--primary); outline: none; }
+        .form-group input[readonly] { background: #e9ecef; }
+
+        /* Custom Smart Dropdown */
+        .suggestions-box {
+            position: absolute; top: 100%; left: 0; width: 100%; background: #fff;
+            border: 1px solid #ccc; border-radius: 0 0 6px 6px; z-index: 100;
+            max-height: 180px; overflow-y: auto; display: none;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.15); margin-top: -2px;
+        }
+        .suggestion-item { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 14px; display: flex; justify-content: space-between; }
+        .suggestion-item:hover { background: var(--primary); color: white; }
+        .suggestion-item:last-child { border-bottom: none; }
+
+        /* Product Row */
+        .product-row { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee; position: relative; }
+        .remove-btn { position: absolute; right: -8px; top: -8px; background: #dc3545; color: #fff; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-size: 14px; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2);}
+
+        /* Buttons */
+        button { padding: 12px 20px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.3s; color: #fff; display: inline-flex; justify-content: center; align-items: center; gap: 8px;}
+        .btn-primary { background: var(--primary); }
+        .btn-success { background: #28a745; }
+        .btn-info { background: #17a2b8; }
+        .btn-danger { background: #dc3545; }
+        .btn-outline { background: transparent; border: 2px dashed var(--primary); color: var(--primary); margin-bottom: 20px; width: 100%; font-size: 15px;}
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        /* Invoice Output UI */
+        #output-section { display: none; }
+        .invoice-wrapper {
+            background: #fff; padding: 40px; border: 2px solid #222; border-radius: 0;
+            width: 100%; max-width: 800px; margin: 0 auto; box-sizing: border-box;
+            color: #000; font-family: 'Times New Roman', Times, serif; position: relative;
+        }
+
+        /* Top Spiritual Header */
+        .spiritual-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
+        .spiritual-side { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: bold; color: #d32f2f;}
+        .spiritual-side img { width: 35px; height: 35px; object-fit: contain; }
+        .spiritual-center { text-align: center; }
+        .spiritual-center img { width: 75px; height: 75px; object-fit: contain; margin-bottom: 15px; }
+
+        .inv-header { text-align: center; margin-bottom: 25px; }
+        .inv-header h1 { margin: 0; font-size: 24px; text-transform: uppercase; font-weight: 900; letter-spacing: 1px;}
+        .inv-header h3 { margin: 5px 0; font-size: 16px; border: none; padding: 0; color: #333;}
+        .inv-header p { margin: 2px 0; font-size: 14px; }
+
+        .inv-details { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 15px; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 12px 0;}
+        .inv-details-left, .inv-details-right { display: flex; flex-direction: column; gap: 6px; }
+        .inv-details-right { text-align: right; }
+
+        .inv-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+        .inv-table th, .inv-table td { border: 1px solid #000; padding: 10px; text-align: left; font-size: 15px;}
+        .inv-table th { background: #f0f0f0; font-weight: bold; }
+        .inv-table .text-right { text-align: right; }
+        .inv-table .total-row th { font-size: 18px; }
+
+        .inv-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 40px; }
+        .stamp-box img { width: 100px; height: 100px; opacity: 0.8; transform: rotate(-5deg); }
+        .signature-box { text-align: center; }
+        .signature-box img { width: 120px; height: 50px; object-fit: contain; margin-bottom: 5px; }
+        .signature-box p { margin: 0; font-weight: bold; border-top: 1px solid #000; padding-top: 5px; }
+
+        /* Records Table */
+        .search-box { position: relative; margin-bottom: 15px; }
+        .search-box input { width: 100%; padding: 12px 12px 12px 35px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; box-sizing: border-box;}
+        .search-box i { position: absolute; left: 12px; top: 14px; color: #888; }
+        
+        .records-table-container { overflow-x: auto; }
+        .records-table { width: 100%; border-collapse: collapse; background: #fff; }
+        .records-table th, .records-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+        .records-table th { background: var(--primary); color: white; }
+        .records-table tr:hover { background: #f8f9fa; }
+
+        /* UNDO Toast Popup */
+        .undo-toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: #2c3e50; color: #fff; padding: 12px 20px; border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3); display: none; align-items: center; gap: 20px;
+            z-index: 100000; font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px;
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { bottom: -50px; opacity: 0; } to { bottom: 30px; opacity: 1; } }
+        
+        .undo-btn {
+            background: #ffc107; color: #000; border: none; padding: 6px 15px;
+            border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; margin: 0; text-transform: uppercase;
+        }
+        .undo-btn:hover { background: #e0a800; }
+
+        .action-bar { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+
+        /* PRINT CSS - Hides everything except invoice */
+        @media print {
+            body * { visibility: hidden; }
+            #invoice-wrapper, #invoice-wrapper * { visibility: visible; }
+            #invoice-wrapper { position: absolute; left: 0; top: 0; width: 100%; margin: 0; border: none; padding: 20px; }
+            body { background: #fff; }
+            #preloader, .undo-toast { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Preloader Animation -->
+    <div id="preloader">
+        <img src="https://cdn-icons-png.flaticon.com/512/3076/3076751.png" class="preloader-img" alt="Loading">
+        <div class="preloader-text">Loading Invoice System...</div>
+    </div>
+
+    <!-- UNDO Toast -->
+    <div id="undoToast" class="undo-toast">
+        <span><i class="fa-solid fa-trash-can"></i> Record removed.</span>
+        <button class="undo-btn" onclick="undoDelete()">Undo</button>
+    </div>
+
+    <!-- INPUT SECTION -->
+    <div id="input-section" class="panel">
+        
+        <!-- Form Header -->
+        <div class="form-header-info">
+            <img src="https://cdn-icons-png.flaticon.com/512/3076/3076751.png" alt="Logo">
+            <h1>SHRI GIRRAJ MAHARAJ COLLEGE MATHURA</h1>
+            <p>Main Campus Road, Mathura, Uttar Pradesh, India - 281001</p>
+            <div class="gst-text">GSTIN: 09AAAAA0000A1Z5</div>
+        </div>
+
+        <form id="invoiceForm">
+            <!-- 3 Boxes Layout -->
+            <div class="grid-3">
+                <div class="form-group">
+                    <label>Invoice No.</label>
+                    <input type="text" id="invNo" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Date & Time</label>
+                    <input type="text" id="invDateTime" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Billed By</label>
+                    <select id="billedBy" required>
+                        <option value="KRISHAN">KRISHAN</option>
+                        <option value="ROHIT">ROHIT</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid-3">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>Customer Name</label>
+                    <input type="text" id="customerName" placeholder="Enter Customer Name" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Payment Mode</label>
+                    <select id="paymentMode" required>
+                        <option value="Cash">Cash</option>
+                        <option value="UPI / Online">UPI / Online</option>
+                        <option value="Card">Card</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                    </select>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 20px; font-size: 16px;"><i class="fa-solid fa-box"></i> Products / Services</h3>
+            <div id="productContainer">
+                <!-- Products will be appended here -->
+            </div>
+
+            <button type="button" class="btn-outline" onclick="addProductRow()"><i class="fa-solid fa-plus"></i> Add Another Product</button>
+            <button type="submit" class="btn-primary" style="width: 100%; font-size: 16px;"><i class="fa-solid fa-file-export"></i> Export Final Invoice</button>
+        </form>
+    </div>
+
+    <!-- OUTPUT SECTION -->
+    <div id="output-section" class="panel" style="background: transparent; box-shadow: none;">
+        
+        <div class="invoice-wrapper" id="invoice-wrapper">
+            
+            <!-- Spiritual Header -->
+            <div class="spiritual-header">
+                <div class="spiritual-side">
+                    <img src="https://cdn-icons-png.flaticon.com/512/1051/1051268.png" crossorigin="anonymous" alt="icon">
+                    <span>(जय श्री कृष्णा)</span>
+                </div>
+                <div class="spiritual-center">
+                    <img src="https://cdn-icons-png.flaticon.com/512/3076/3076751.png" crossorigin="anonymous" alt="Center Logo">
+                </div>
+                <div class="spiritual-side">
+                    <img src="https://cdn-icons-png.flaticon.com/512/1051/1051268.png" crossorigin="anonymous" alt="icon">
+                    <span>(जय श्री राधा)</span>
+                </div>
+            </div>
+
+            <!-- College Board Heading -->
+            <div class="inv-header">
+                <h1>SHRI GIRRAJ MAHARAJ COLLEGE MATHURA</h1>
+                <h3>Official Invoice & Billing</h3>
+                <p>Main Campus Road, Mathura, Uttar Pradesh, India</p>
+                <p>Mobile: +91-9876543210</p>
+            </div>
+
+            <!-- Invoice Details -->
+            <div class="inv-details">
+                <div class="inv-details-left">
+                    <strong>Invoice No: <span id="outInvNo"></span></strong>
+                    <span>Customer: <strong id="outCustomer" style="font-size: 16px;"></strong></span>
+                </div>
+                <div class="inv-details-right">
+                    <span>Date & Time: <strong id="outDateTime"></strong></span>
+                    <span>Payment Mode: <strong id="outPayment"></strong></span>
+                    <span>Created By: <strong id="outCreatedBy"></strong></span>
+                </div>
+            </div>
+
+            <!-- Invoice Table -->
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th width="10%">S.No</th>
+                        <th width="50%">Product / Service Name</th>
+                        <th width="15%" class="text-right">Qty</th>
+                        <th width="25%" class="text-right">Amount (₹)</th>
+                    </tr>
+                </thead>
+                <tbody id="outTableBody">
+                    <!-- Dynamic Rows -->
+                </tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <th colspan="3" class="text-right">Grand Total:</th>
+                        <th class="text-right" id="outGrandTotal">₹ 0</th>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <!-- Stamp & Signature -->
+            <div class="inv-footer">
+                <div class="stamp-box">
+                    <img src="https://png.pngtree.com/png-vector/20221013/ourmid/pngtree-paid-stamp-vector-transparent-png-image_6324888.png" crossorigin="anonymous" alt="Stamp">
+                </div>
+                <div class="signature-box">
+                    <img id="outSignatureImg" src="" crossorigin="anonymous" alt="Signature">
+                    <p>Authorised Signature</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="action-bar">
+            <button class="btn-success" onclick="downloadPDF()"><i class="fa-solid fa-download"></i> Download PDF</button>
+            <button class="btn-info" onclick="window.print()"><i class="fa-solid fa-print"></i> Print (Ctrl+P)</button>
+            <button class="btn-primary" onclick="resetForm()"><i class="fa-solid fa-rotate-left"></i> Create New Invoice</button>
+        </div>
+    </div>
+
+    <!-- RECORDS SECTION -->
+    <div class="panel">
+        <h2><i class="fa-solid fa-database"></i> Invoice History</h2>
+        
+        <div class="search-box">
+            <i class="fa-solid fa-search"></i>
+            <input type="text" id="searchBox" placeholder="Search by Customer Name..." onkeyup="filterRecords()">
+        </div>
+
+        <div class="records-table-container">
+            <table class="records-table">
+                <thead>
+                    <tr>
+                        <!-- S.No Column Removed as requested -->
+                        <th>Customer Name</th>
+                        <th>Total Qty</th>
+                        <th>Date & Time</th>
+                        <th>Billed By</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="recordsBody">
+                    <!-- History injected here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const productsDB = [
+            { name: "Web Development HTML/CSS", price: 2500 },
+            { name: "JavaScript Programming", price: 3500 },
+            { name: "Frontend Dashboard Design", price: 5000 },
+            { name: "Backend Database Setup", price: 6500 },
+            { name: "Full E-commerce Setup", price: 12000 },
+            { name: "UI/UX Figma Design", price: 4000 },
+            { name: "Mobile App Development", price: 15000 },
+            { name: "SEO & Digital Marketing", price: 3000 },
+            { name: "Python Data Analysis", price: 4500 },
+            { name: "Cyber Security Audit", price: 8000 }
+        ];
+
+        const signatureImages = {
+            "KRISHAN": "https://upload.wikimedia.org/wikipedia/commons/f/fa/Signature_of_John_Hancock.png",
+            "ROHIT": "https://upload.wikimedia.org/wikipedia/commons/a/af/Ryan-Signature.png"
+        };
+
+        let invoiceRecords = JSON.parse(localStorage.getItem('invoicesDB')) || [];
+        
+        // Variables for UNDO functionality
+        let deletedRecord = null;
+        let deletedIndex = null;
+        let undoTimeout = null;
+
+        window.onload = () => {
+            setTimeout(() => { document.getElementById('preloader').style.display = 'none'; }, 3000);
+            setInitialData();
+            addProductRow(); 
+            renderRecords();
+        };
+
+        function setInitialData() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+            const timeStr = now.toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit', hour12: true});
+            document.getElementById('invDateTime').value = `${dateStr}, ${timeStr}`;
+            document.getElementById('invNo').value = "INV-" + Math.floor(100000 + Math.random() * 900000);
+        }
+
+        function addProductRow() {
+            const container = document.getElementById('productContainer');
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'grid-3 product-row';
+            rowDiv.innerHTML = `
+                <button type="button" class="remove-btn" onclick="this.parentElement.remove();"><i class="fa-solid fa-xmark"></i></button>
+                <div class="form-group">
+                    <label>Product Name</label>
+                    <input type="text" class="prod-name" placeholder="Type first letter..." autocomplete="off" onkeyup="handleDropdown(this)" required>
+                    <div class="suggestions-box"></div>
+                </div>
+                <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" class="prod-qty" min="1" value="1" required oninput="calculateRowAmount(this)">
+                </div>
+                <div class="form-group">
+                    <label>Total Amount (₹)</label>
+                    <input type="number" class="prod-amount" readonly required>
+                    <input type="hidden" class="prod-price">
+                </div>
+            `;
+            container.appendChild(rowDiv);
+        }
+
+        function handleDropdown(inputElem) {
+            const val = inputElem.value.toLowerCase();
+            const suggestionBox = inputElem.nextElementSibling;
+            suggestionBox.innerHTML = '';
+
+            if (!val) { suggestionBox.style.display = 'none'; return; }
+
+            const matches = productsDB.filter(p => p.name.toLowerCase().includes(val));
+
+            if (matches.length > 0) {
+                matches.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = 'suggestion-item';
+                    div.innerHTML = `<span>${p.name}</span> <strong>₹${p.price}</strong>`;
+                    div.onclick = () => {
+                        inputElem.value = p.name;
+                        const row = inputElem.closest('.product-row');
+                        row.querySelector('.prod-price').value = p.price;
+                        suggestionBox.style.display = 'none';
+                        calculateRowAmount(row.querySelector('.prod-qty'));
+                    };
+                    suggestionBox.appendChild(div);
+                });
+                suggestionBox.style.display = 'block';
+            } else {
+                suggestionBox.style.display = 'none';
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.classList.contains('prod-name')) {
+                document.querySelectorAll('.suggestions-box').forEach(box => box.style.display = 'none');
+            }
+        });
+
+        function calculateRowAmount(qtyElem) {
+            const row = qtyElem.closest('.product-row');
+            const price = parseFloat(row.querySelector('.prod-price').value) || 0;
+            const qty = parseFloat(qtyElem.value) || 0;
+            row.querySelector('.prod-amount').value = price * qty;
+        }
+
+        // Form Submit
+        document.getElementById('invoiceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            commitDelete(); // Ensure any pending deletes are finalized before saving new data
+
+            const invNo = document.getElementById('invNo').value;
+            const dt = document.getElementById('invDateTime').value;
+            const customer = document.getElementById('customerName').value;
+            const mode = document.getElementById('paymentMode').value;
+            const biller = document.getElementById('billedBy').value;
+
+            const rows = document.querySelectorAll('.product-row');
+            let productsArr = [];
+            let grandTotal = 0, totalQty = 0;
+
+            rows.forEach(row => {
+                const name = row.querySelector('.prod-name').value;
+                const qty = parseInt(row.querySelector('.prod-qty').value) || 0;
+                const amt = parseFloat(row.querySelector('.prod-amount').value) || 0;
+                if(name && qty > 0) {
+                    productsArr.push({ name, qty, amt });
+                    grandTotal += amt; totalQty += qty;
+                }
+            });
+
+            if(productsArr.length === 0) { alert("Please add at least one product with amount."); return; }
+
+            const invoiceData = { invNo, dt, customer, mode, biller, products: productsArr, grandTotal, totalQty };
+            
+            invoiceRecords.push(invoiceData);
+            localStorage.setItem('invoicesDB', JSON.stringify(invoiceRecords));
+
+            renderInvoice(invoiceData);
+            renderRecords();
+
+            document.getElementById('input-section').style.display = 'none';
+            document.getElementById('output-section').style.display = 'block';
+        });
+
+        function renderInvoice(data) {
+            document.getElementById('outInvNo').innerText = data.invNo;
+            document.getElementById('outDateTime').innerText = data.dt;
+            document.getElementById('outCustomer').innerText = data.customer;
+            document.getElementById('outPayment').innerText = data.mode;
+            
+            document.getElementById('outCreatedBy').innerText = data.biller;
+            document.getElementById('outSignatureImg').src = signatureImages[data.biller];
+
+            const tbody = document.getElementById('outTableBody');
+            tbody.innerHTML = '';
+            data.products.forEach((p, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><strong>${p.name}</strong></td>
+                        <td class="text-right">${p.qty}</td>
+                        <td class="text-right">₹ ${p.amt}</td>
+                    </tr>
+                `;
+            });
+            document.getElementById('outGrandTotal').innerText = `₹ ${data.grandTotal}`;
+        }
+
+        // Render Records (S.No Removed)
+        function renderRecords() {
+            const tbody = document.getElementById('recordsBody');
+            tbody.innerHTML = '';
+            
+            [...invoiceRecords].reverse().forEach((rec, index) => {
+                const realIndex = invoiceRecords.length - 1 - index;
+                tbody.innerHTML += `
+                    <tr>
+                        <!-- S.No removed -->
+                        <td><strong>${rec.customer}</strong></td>
+                        <td>${rec.totalQty}</td>
+                        <td>${rec.dt}</td>
+                        <td>${rec.biller}</td>
+                        <td style="min-width: 170px;">
+                            <button class="btn-info" style="padding: 6px 10px; font-size: 13px;" onclick="viewPastInvoice(${realIndex})"><i class="fa-solid fa-eye"></i> View</button>
+                            <button class="btn-danger" style="padding: 6px 10px; font-size: 13px;" onclick="deleteRecord(${realIndex})"><i class="fa-solid fa-trash"></i> Remove</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // --- DELETE & UNDO SYSTEM ---
+
+        function deleteRecord(index) {
+            // Commit previous deletion if user deletes multiple rapidly
+            if (deletedRecord !== null) { commitDelete(); }
+
+            // Save record for Undo
+            deletedIndex = index;
+            deletedRecord = invoiceRecords[index];
+            
+            // Remove instantly from array
+            invoiceRecords.splice(index, 1);
+            
+            // Update UI Instantly (Row vanishes)
+            renderRecords();
+            
+            // Show Undo Toast
+            showUndoToast();
+        }
+
+        function showUndoToast() {
+            const toast = document.getElementById('undoToast');
+            toast.style.display = 'flex';
+            
+            if (undoTimeout) clearTimeout(undoTimeout);
+            
+            // Wait 4 seconds, if not clicked, commit permanently
+            undoTimeout = setTimeout(() => {
+                hideUndoToast();
+                commitDelete();
+            }, 4000);
+        }
+
+        function hideUndoToast() {
+            document.getElementById('undoToast').style.display = 'none';
+        }
+
+        function undoDelete() {
+            if (deletedRecord !== null && deletedIndex !== null) {
+                clearTimeout(undoTimeout);
+                // Put record back where it was
+                invoiceRecords.splice(deletedIndex, 0, deletedRecord);
+                
+                renderRecords(); // Row comes back
+                
+                deletedRecord = null;
+                deletedIndex = null;
+                hideUndoToast();
+            }
+        }
+
+        function commitDelete() {
+            if (deletedRecord !== null) {
+                // Save changes permanently to LocalStorage
+                localStorage.setItem('invoicesDB', JSON.stringify(invoiceRecords));
+                deletedRecord = null;
+                deletedIndex = null;
+            }
+        }
+
+        // Live Search
+        function filterRecords() {
+            const query = document.getElementById('searchBox').value.toLowerCase();
+            const rows = document.getElementById('recordsBody').getElementsByTagName('tr');
+            for (let i = 0; i < rows.length; i++) {
+                const customerName = rows[i].getElementsByTagName('td')[0].innerText.toLowerCase(); // Index 0 now because S.No is removed
+                rows[i].style.display = customerName.includes(query) ? '' : 'none';
+            }
+        }
+
+        function viewPastInvoice(index) {
+            const data = invoiceRecords[index];
+            renderInvoice(data);
+            document.getElementById('input-section').style.display = 'none';
+            document.getElementById('output-section').style.display = 'block';
+            window.scrollTo(0,0);
+        }
+
+        function resetForm() {
+            document.getElementById('invoiceForm').reset();
+            document.getElementById('productContainer').innerHTML = '';
+            setInitialData();
+            addProductRow();
+            document.getElementById('output-section').style.display = 'none';
+            document.getElementById('input-section').style.display = 'block';
+            window.scrollTo(0,0);
+        }
+
+        function downloadPDF() {
+            const element = document.getElementById('invoice-wrapper');
+            const invNo = document.getElementById('outInvNo').innerText;
+            const opt = {
+                margin:       0.3,
+                filename:     `Invoice_${invNo}.pdf`,
+                image:        { type: 'jpeg', quality: 1.0 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+    </script>
+</body>
+</html>
