@@ -87,9 +87,16 @@
 
         /* Invoice Output UI */
         #output-section { display: none; }
-        .invoice-wrapper {
-            background: #fff; padding: 40px; border: 2px solid #222; border-radius: 0;
-            width: 100%; max-width: 800px; margin: 0 auto; box-sizing: border-box;
+        .invoice-wrapper{
+    width:210mm;
+    min-height:297mm;
+    margin:auto;
+    padding:12mm;
+    box-sizing:border-box;
+    background:#fff;
+    border:2px solid #000;
+    overflow:hidden;
+}
             color: #000; font-family: 'Times New Roman', Times, serif; position: relative;
         }
 
@@ -158,6 +165,38 @@
             body { background: #fff; }
             #preloader, .undo-toast { display: none !important; }
         }
+
+
+@page{
+    size:A4 portrait;
+    margin:5mm;
+}
+
+.invoice-wrapper,
+.invoice-wrapper *{
+    page-break-inside:avoid !important;
+}
+
+table{
+    page-break-inside:auto;
+}
+
+tr{
+    page-break-inside:avoid;
+    page-break-after:auto;
+}
+
+td,
+th{
+    page-break-inside:avoid;
+}
+
+img{
+    max-width:100%;
+}
+
+
+
     </style>
 </head>
 <body>
@@ -622,18 +661,44 @@
             window.scrollTo(0,0);
         }
 
-        function downloadPDF() {
-            const element = document.getElementById('invoice-wrapper');
-            const invNo = document.getElementById('outInvNo').innerText;
-            const opt = {
-                margin:       0.3,
-                filename:     `Invoice_${invNo}.pdf`,
-                image:        { type: 'jpeg', quality: 1.0 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-            };
-            html2pdf().set(opt).from(element).save();
+        function downloadPDF(){
+
+    const element=document.getElementById("invoice-wrapper");
+    const invNo=document.getElementById("outInvNo").innerText;
+
+    html2pdf().set({
+
+        margin:[5,5,5,5],
+
+        filename:`Invoice_${invNo}.pdf`,
+
+        image:{
+            type:"jpeg",
+            quality:1
+        },
+
+        html2canvas:{
+            scale:3,
+            useCORS:true,
+            scrollX:0,
+            scrollY:0,
+            windowWidth:element.scrollWidth,
+            windowHeight:element.scrollHeight
+        },
+
+        jsPDF:{
+            unit:"mm",
+            format:"a4",
+            orientation:"portrait"
+        },
+
+        pagebreak:{
+            mode:["avoid-all","css","legacy"]
         }
+
+    }).from(element).save();
+
+}
     </script>
 </body>
 </html>
